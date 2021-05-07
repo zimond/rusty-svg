@@ -102,3 +102,11 @@ dist
 
 # TernJS port file
 .tern-port
+
+package-lock.json
+
+
+# Added by cargo
+
+/target
+Cargo.lock
