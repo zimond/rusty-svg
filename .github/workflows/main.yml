@@ -35,12 +35,9 @@ jobs:
       run: cargo test --verbose
     - name: install wasm-pack
       run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-    - run: wasm-pack build --release --target nodejs
+    - run: wasm-pack build --release --target nodejs --out-name index --out-dir pkg
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: Upload wasm file
+        name: wasm file
         path: pkg/**
-    - name: Display uploaded files
-      run: ls -R
-      shell: bash
