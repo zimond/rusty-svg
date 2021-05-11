@@ -27,9 +27,13 @@ impl RustySvg {
         self.tree.svg_node().size.height()
     }
 
-    pub fn render(&self) -> Option<Uint8Array> {
-        let mut pixmap = Pixmap::new(self.width() as u32, self.height() as u32)?;
-        resvg::render(&self.tree, usvg::FitTo::Original, pixmap.as_mut())?;
+    pub fn render(&self, factor: Option<f64>) -> Option<Uint8Array> {
+        let ratio = factor.unwrap_or(1.0);
+        let mut pixmap = Pixmap::new(
+            (self.width() * ratio) as u32,
+            (self.height() * ratio) as u32,
+        )?;
+        resvg::render(&self.tree, usvg::FitTo::Zoom(ratio as f32), pixmap.as_mut())?;
         let buffer = pixmap.encode_png().unwrap();
         Some(Uint8Array::from(buffer.as_slice()))
     }
