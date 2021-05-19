@@ -6,3 +6,14 @@
 </p>
 
 An SVG toolkit based on resvg
+
+
+## Example
+
+Run the following command, it will convert [tiger.svg](tests/tiger.svg) to [tiger.png](tests/tiger.png)
+
+```shell
+node test/index.js
+```
+
+![tiger](tests/tiger.png)
