@@ -6,14 +6,14 @@
 </p>
 
 An SVG toolkit based on resvg
-
-
 ## Example
 
 Run the following command, it will convert [tiger.svg](tests/tiger.svg) to [tiger.png](tests/tiger.png)
 
 ```shell
-node test/index.js
+node tests/index.js
 ```
 
-![tiger](tests/tiger.png)
+|  SVG   |  PNG  |
+|  ----  | ----  |
+| <img width="360" src="tests/tiger.svg" alt="Tiger.svg">  | <img width="360" src="tests/tiger.png" alt="Tiger.png"> |
