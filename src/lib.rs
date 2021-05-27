@@ -13,6 +13,19 @@ pub struct BBox {
 }
 
 #[wasm_bindgen]
+impl BBox {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> BBox {
+        BBox {
+            x: 0.0,
+            y: 0.0,
+            width: 1.0,
+            height: 1.0,
+        }
+    }
+}
+
+#[wasm_bindgen]
 pub struct RustySvg {
     tree: usvg::Tree,
 }
