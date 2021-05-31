@@ -9,7 +9,7 @@ crate-type = ['cdylib']
 
 [dependencies]
 js-sys = "0.3.46"
-lyon_geom = "0.17.0"
+lyon_algorithms = "0.17.4"
 regex = "1.5.4"
 resvg = { version = "0.14.1", default-features = false }
 tiny-skia = "0.5.1"

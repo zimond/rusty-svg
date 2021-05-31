@@ -1,5 +1,5 @@
 use js_sys::Uint8Array;
-use lyon_geom::Point;
+use lyon_algorithms::geom::Point;
 use std::rc::Rc;
 use tiny_skia::Pixmap;
 use wasm_bindgen::prelude::*;
@@ -82,13 +82,13 @@ impl RustySvg {
                             x,
                             y,
                         } => {
-                            let seg = lyon_geom::CubicBezierSegment {
+                            let seg = lyon_algorithms::geom::CubicBezierSegment {
                                 from: Point::new(from.0, from.1),
                                 ctrl1: Point::new(*x1, *y1),
                                 ctrl2: Point::new(*x2, *y2),
                                 to: Point::new(*x, *y),
                             };
-                            lyon_geom::cubic_to_quadratic::cubic_to_quadratics(
+                            lyon_algorithms::geom::cubic_to_quadratic::cubic_to_quadratics(
                                 &seg,
                                 tolerance,
                                 &mut |new_seg| {
@@ -198,13 +198,14 @@ impl RustySvg {
     fn node_bbox(&self, node: usvg::Node, min_point: &mut Point<f64>, max_point: &mut Point<f64>) {
         match &*node.borrow() {
             usvg::NodeKind::Path(p) => {
+                let mut b = lyon_algorithms::path::Path::builder();
                 for seg in &p.data.0 {
                     match seg {
                         usvg::PathSegment::MoveTo { x, y } => {
-                            min_max_point(min_point, max_point, *x, *y)
+                            b.begin(Point::new(*x as f32, *y as f32));
                         }
                         usvg::PathSegment::LineTo { x, y } => {
-                            min_max_point(min_point, max_point, *x, *y)
+                            b.line_to(Point::new(*x as f32, *y as f32));
                         }
                         usvg::PathSegment::CurveTo {
                             x1,
@@ -214,13 +215,30 @@ impl RustySvg {
                             x,
                             y,
                         } => {
-                            min_max_point(min_point, max_point, *x1, *y1);
-                            min_max_point(min_point, max_point, *x2, *y2);
-                            min_max_point(min_point, max_point, *x, *y)
+                            b.cubic_bezier_to(
+                                Point::new(*x1 as f32, *y1 as f32),
+                                Point::new(*x2 as f32, *y2 as f32),
+                                Point::new(*x as f32, *y as f32),
+                            );
                         }
-                        _ => {}
+                        usvg::PathSegment::ClosePath => {
+                            b.close();
+                        }
                     }
                 }
+                let bbox = lyon_algorithms::aabb::bounding_rect(b.build().iter());
+                min_max_point(
+                    min_point,
+                    max_point,
+                    bbox.min_x() as f64,
+                    bbox.min_y() as f64,
+                );
+                min_max_point(
+                    min_point,
+                    max_point,
+                    bbox.max_x() as f64,
+                    bbox.max_y() as f64,
+                )
             }
             usvg::NodeKind::Group(g) => {
                 if let Some(clippath) = g.clip_path.as_ref().and_then(|cp| self.node_by_id(cp)) {
