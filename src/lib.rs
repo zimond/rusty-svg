@@ -48,13 +48,19 @@ impl RustySvg {
         self.tree.svg_node().size.height()
     }
 
-    pub fn render(&self, factor: Option<f64>) -> Option<Uint8Array> {
-        let ratio = factor.unwrap_or(1.0);
-        let mut pixmap = Pixmap::new(
-            (self.width() * ratio) as u32,
-            (self.height() * ratio) as u32,
+    /// Render the svg to PNG buffer. Accepts an optional `width`, allowing
+    /// the image to be scaled proportionally based on the given width.
+    ///
+    /// Note: floated width will be floored to integer value
+    pub fn render(&self, width: Option<f64>) -> Option<Uint8Array> {
+        let width = width.unwrap_or(self.width());
+        let height = width / self.width() * self.height();
+        let mut pixmap = Pixmap::new(width as u32, height as u32)?;
+        resvg::render(
+            &self.tree,
+            usvg::FitTo::Width(width as u32),
+            pixmap.as_mut(),
         )?;
-        resvg::render(&self.tree, usvg::FitTo::Zoom(ratio as f32), pixmap.as_mut())?;
         let buffer = pixmap.encode_png().unwrap();
         Some(Uint8Array::from(buffer.as_slice()))
     }
@@ -118,6 +124,7 @@ impl RustySvg {
         }
     }
 
+    /// Output the svg to a string
     pub fn to_string(&self) -> String {
         let s = self.tree.to_string(usvg::XmlOptions::default());
         let path_reg = regex::RegexBuilder::new(
@@ -154,6 +161,10 @@ impl RustySvg {
             .to_string()
     }
 
+    /// Calculate a maximum bounding box of all visible elements in this
+    /// SVG.
+    ///
+    /// Note: path bounding box are approx. values
     pub fn inner_bbox(&self) -> BBox {
         let mut min_point = Point::new(std::f64::MAX, std::f64::MAX);
         let mut max_point = Point::new(0.0, 0.0);
@@ -170,6 +181,9 @@ impl RustySvg {
         }
     }
 
+    /// Use a given `BBox` to crop the svg. Currently this method simply
+    /// changes the viewbox/size of the svg and do not move the elements
+    /// for simplicity
     pub fn crop(&mut self, bbox: &BBox) {
         let mut node = self.tree.root();
         let mut node = node.borrow_mut();
