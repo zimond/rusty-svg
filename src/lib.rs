@@ -4,6 +4,7 @@ use std::rc::Rc;
 use tiny_skia::Pixmap;
 use wasm_bindgen::prelude::*;
 
+const MAX: f64 = std::f64::MAX;
 #[wasm_bindgen]
 pub struct BBox {
     pub x: f64,
@@ -166,12 +167,12 @@ impl RustySvg {
     ///
     /// Note: path bounding box are approx. values
     pub fn inner_bbox(&self) -> BBox {
-        let mut min_point = Point::new(std::f64::MAX, std::f64::MAX);
-        let mut max_point = Point::new(0.0, 0.0);
+        let mut min_point = usvg::Point::new(MAX, MAX);
+        let mut max_point = usvg::Point::new(-MAX, -MAX);
         for child in self.tree.root().children().skip(1) {
-            for node in child.descendants() {
-                self.node_bbox(node, &mut min_point, &mut max_point);
-            }
+            let (min, max) = self.node_bbox(child, usvg::Transform::default());
+            min_max_point(&mut min_point, &mut max_point, min.x, min.y);
+            min_max_point(&mut min_point, &mut max_point, max.x, max.y);
         }
         BBox {
             x: min_point.x,
@@ -195,8 +196,14 @@ impl RustySvg {
         }
     }
 
-    fn node_bbox(&self, node: usvg::Node, min_point: &mut Point<f64>, max_point: &mut Point<f64>) {
-        match &*node.borrow() {
+    fn node_bbox(
+        &self,
+        node: usvg::Node,
+        parent_transform: usvg::Transform,
+    ) -> (usvg::Point<f64>, usvg::Point<f64>) {
+        let mut transform = node.borrow().transform();
+        transform.prepend(&parent_transform);
+        let (bbox_min, bbox_max) = match &*node.borrow() {
             usvg::NodeKind::Path(p) => {
                 let mut b = lyon_algorithms::path::Path::builder();
                 for seg in &p.data.0 {
@@ -227,42 +234,43 @@ impl RustySvg {
                     }
                 }
                 let bbox = lyon_algorithms::aabb::bounding_rect(b.build().iter());
-                min_max_point(
-                    min_point,
-                    max_point,
-                    bbox.min_x() as f64,
-                    bbox.min_y() as f64,
-                );
-                min_max_point(
-                    min_point,
-                    max_point,
-                    bbox.max_x() as f64,
-                    bbox.max_y() as f64,
+                (
+                    usvg::Point::new(bbox.min_x() as f64, bbox.min_y() as f64),
+                    usvg::Point::new(bbox.max_x() as f64, bbox.max_y() as f64),
                 )
             }
             usvg::NodeKind::Group(g) => {
                 if let Some(clippath) = g.clip_path.as_ref().and_then(|cp| self.node_by_id(cp)) {
-                    return self.node_bbox(clippath, min_point, max_point);
-                }
-                if let Some(mask) = g.mask.as_ref().and_then(|cp| self.node_by_id(cp)) {
-                    return self.node_bbox(mask, min_point, max_point);
-                }
-                for child in node.children() {
-                    self.node_bbox(child, min_point, max_point);
+                    self.node_bbox(clippath, transform)
+                } else if let Some(mask) = g.mask.as_ref().and_then(|cp| self.node_by_id(cp)) {
+                    self.node_bbox(mask, transform)
+                } else {
+                    let mut min_point = usvg::Point::new(MAX, MAX);
+                    let mut max_point = usvg::Point::new(-MAX, -MAX);
+                    for child in node.children() {
+                        let (child_min, child_max) = self.node_bbox(child, transform);
+                        min_max_point(&mut min_point, &mut max_point, child_min.x, child_min.y);
+                        min_max_point(&mut min_point, &mut max_point, child_max.x, child_max.y);
+                    }
+                    (min_point, max_point)
                 }
             }
             usvg::NodeKind::Image(image) => {
-                let (x, y) = image
-                    .transform
-                    .apply(image.view_box.rect.x(), image.view_box.rect.y());
-                let (x2, y2) = image
-                    .transform
-                    .apply(image.view_box.rect.right(), image.view_box.rect.bottom());
-                min_max_point(min_point, max_point, x, y);
-                min_max_point(min_point, max_point, x2, y2);
+                let rect = image.view_box.rect;
+                (
+                    usvg::Point::new(rect.x(), rect.y()),
+                    usvg::Point::new(rect.right(), rect.bottom()),
+                )
             }
-            _ => {}
-        }
+            _ => {
+                let min_point = usvg::Point::new(MAX, MAX);
+                let max_point = usvg::Point::new(-MAX, -MAX);
+                return (min_point, max_point);
+            }
+        };
+        let (x1, y1) = transform.apply(bbox_min.x, bbox_min.y);
+        let (x2, y2) = transform.apply(bbox_max.x, bbox_max.y);
+        (usvg::Point::new(x1, y1), usvg::Point::new(x2, y2))
     }
 
     fn node_by_id(&self, id: &str) -> Option<usvg::Node> {
@@ -275,9 +283,22 @@ impl RustySvg {
     }
 }
 
-fn min_max_point(min_point: &mut Point<f64>, max_point: &mut Point<f64>, x: f64, y: f64) {
-    min_point.x = min_point.x.min(x);
-    min_point.y = min_point.y.min(y);
-    max_point.x = max_point.x.max(x);
-    max_point.y = max_point.y.max(y);
+fn min_max_point(
+    min_point: &mut usvg::Point<f64>,
+    max_point: &mut usvg::Point<f64>,
+    x: f64,
+    y: f64,
+) {
+    if x != -MAX {
+        min_point.x = min_point.x.min(x);
+    }
+    if y != -MAX {
+        min_point.y = min_point.y.min(y);
+    }
+    if x != MAX {
+        max_point.x = max_point.x.max(x);
+    }
+    if y != MAX {
+        max_point.y = max_point.y.max(y);
+    }
 }
