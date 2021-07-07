@@ -198,7 +198,7 @@ impl RustySvg {
     }
 
     fn node_bbox(&self, node: usvg::Node) -> (usvg::Point<f64>, usvg::Point<f64>) {
-        let mut transform = node.borrow().transform();
+        let transform = node.borrow().transform();
         let (bbox_min, bbox_max) = match &*node.borrow() {
             usvg::NodeKind::Path(p) => {
                 let mut b = lyon_algorithms::path::Path::builder();
@@ -315,10 +315,13 @@ mod test {
     use std::io::Read;
     #[test]
     fn test_inner_box() {
-        let mut file = File::open("tests/翻页日历.svg").unwrap();
+        let mut file = File::open("tests/heart.svg").unwrap();
         let mut svg = String::new();
         file.read_to_string(&mut svg).unwrap();
         let svg = RustySvg::new(&svg);
+        assert_eq!(svg.inner_bbox().width, 119.30921491177551);
+        // TODO: test inner_bbox().height
+        // assert_eq!(svg.inner_bbox().height, 87.28472137451172);
         println!("{}", svg.to_string());
         println!("{:?}", svg.inner_bbox());
     }
