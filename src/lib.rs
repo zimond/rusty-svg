@@ -1,7 +1,10 @@
 use js_sys::Uint8Array;
 use lyon_algorithms::geom::Point;
-use pathfinder_content::outline::{Contour, Outline};
 use pathfinder_content::stroke::{OutlineStrokeToFill, StrokeStyle};
+use pathfinder_content::{
+    outline::{Contour, Outline},
+    stroke::LineJoin,
+};
 use pathfinder_geometry::vector::Vector2F;
 use std::rc::Rc;
 use tiny_skia::Pixmap;
@@ -206,14 +209,22 @@ impl RustySvg {
             usvg::NodeKind::Path(p) => {
                 let mut outline = Outline::new();
                 let mut contour = Contour::new();
-                for seg in &p.data.0 {
+                let mut iter = p.data.0.iter().peekable();
+                while let Some(seg) = iter.next() {
                     match seg {
                         usvg::PathSegment::MoveTo { x, y } => {
                             contour = Contour::new();
                             contour.push_endpoint(Vector2F::new(*x as f32, *y as f32));
                         }
                         usvg::PathSegment::LineTo { x, y } => {
-                            contour.push_endpoint(Vector2F::new(*x as f32, *y as f32));
+                            let v = Vector2F::new(*x as f32, *y as f32);
+                            if let Some(usvg::PathSegment::ClosePath) = iter.peek() {
+                                let first = contour.position_of(0);
+                                if (first - v).square_length() < 1.0 {
+                                    continue;
+                                }
+                            }
+                            contour.push_endpoint(v);
                         }
                         usvg::PathSegment::CurveTo {
                             x1,
@@ -235,15 +246,15 @@ impl RustySvg {
                         }
                     }
                 }
-                let bbox = if let Some(stroke) = p.stroke.as_ref() {
+                if let Some(stroke) = p.stroke.as_ref() {
                     let mut style = StrokeStyle::default();
                     style.line_width = stroke.width.value() as f32;
+                    style.line_join = LineJoin::Miter(style.line_width);
                     let mut filler = OutlineStrokeToFill::new(&outline, style);
                     filler.offset();
-                    filler.into_outline().bounds()
-                } else {
-                    outline.bounds()
-                };
+                    outline = filler.into_outline();
+                }
+                let bbox = outline.bounds();
                 (
                     usvg::Point::new(bbox.origin_x() as f64, bbox.origin_y() as f64),
                     usvg::Point::new(bbox.lower_right().x() as f64, bbox.lower_right().y() as f64),
