@@ -1,5 +1,8 @@
 use js_sys::Uint8Array;
 use lyon_algorithms::geom::Point;
+use pathfinder_content::outline::{Contour, Outline};
+use pathfinder_content::stroke::{OutlineStrokeToFill, StrokeStyle};
+use pathfinder_geometry::vector::Vector2F;
 use std::rc::Rc;
 use tiny_skia::Pixmap;
 use wasm_bindgen::prelude::*;
@@ -176,10 +179,10 @@ impl RustySvg {
             min_max_point(&mut min_point, &mut max_point, max.x, max.y);
         }
         BBox {
-            x: min_point.x,
-            y: min_point.y,
-            width: max_point.x - min_point.x,
-            height: max_point.y - min_point.y,
+            x: min_point.x.floor(),
+            y: min_point.y.floor(),
+            width: max_point.x.ceil() - min_point.x.floor(),
+            height: max_point.y.ceil() - min_point.y.floor(),
         }
     }
 
@@ -201,14 +204,16 @@ impl RustySvg {
         let transform = node.borrow().transform();
         let (bbox_min, bbox_max) = match &*node.borrow() {
             usvg::NodeKind::Path(p) => {
-                let mut b = lyon_algorithms::path::Path::builder();
+                let mut outline = Outline::new();
+                let mut contour = Contour::new();
                 for seg in &p.data.0 {
                     match seg {
                         usvg::PathSegment::MoveTo { x, y } => {
-                            b.begin(Point::new(*x as f32, *y as f32));
+                            contour = Contour::new();
+                            contour.push_endpoint(Vector2F::new(*x as f32, *y as f32));
                         }
                         usvg::PathSegment::LineTo { x, y } => {
-                            b.line_to(Point::new(*x as f32, *y as f32));
+                            contour.push_endpoint(Vector2F::new(*x as f32, *y as f32));
                         }
                         usvg::PathSegment::CurveTo {
                             x1,
@@ -218,21 +223,30 @@ impl RustySvg {
                             x,
                             y,
                         } => {
-                            b.cubic_bezier_to(
-                                Point::new(*x1 as f32, *y1 as f32),
-                                Point::new(*x2 as f32, *y2 as f32),
-                                Point::new(*x as f32, *y as f32),
+                            contour.push_cubic(
+                                Vector2F::new(*x1 as f32, *y1 as f32),
+                                Vector2F::new(*x2 as f32, *y2 as f32),
+                                Vector2F::new(*x as f32, *y as f32),
                             );
                         }
                         usvg::PathSegment::ClosePath => {
-                            b.close();
+                            contour.close();
+                            outline.push_contour(std::mem::replace(&mut contour, Contour::new()));
                         }
                     }
                 }
-                let bbox = lyon_algorithms::aabb::bounding_rect(b.build().iter());
+                let bbox = if let Some(stroke) = p.stroke.as_ref() {
+                    let mut style = StrokeStyle::default();
+                    style.line_width = stroke.width.value() as f32;
+                    let mut filler = OutlineStrokeToFill::new(&outline, style);
+                    filler.offset();
+                    filler.into_outline().bounds()
+                } else {
+                    outline.bounds()
+                };
                 (
-                    usvg::Point::new(bbox.min_x() as f64, bbox.min_y() as f64),
-                    usvg::Point::new(bbox.max_x() as f64, bbox.max_y() as f64),
+                    usvg::Point::new(bbox.origin_x() as f64, bbox.origin_y() as f64),
+                    usvg::Point::new(bbox.lower_right().x() as f64, bbox.lower_right().y() as f64),
                 )
             }
             usvg::NodeKind::Group(g) => {
@@ -319,10 +333,8 @@ mod test {
         let mut svg = String::new();
         file.read_to_string(&mut svg).unwrap();
         let svg = RustySvg::new(&svg);
-        assert_eq!(svg.inner_bbox().width, 119.30921491177551);
+        assert_eq!(svg.inner_bbox().width.round() as u32, 121);
         // TODO: test inner_bbox().height
         // assert_eq!(svg.inner_bbox().height, 87.28472137451172);
-        println!("{}", svg.to_string());
-        println!("{:?}", svg.inner_bbox());
     }
 }
