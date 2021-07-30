@@ -218,7 +218,10 @@ impl RustySvg {
                 while let Some(seg) = iter.next() {
                     match seg {
                         usvg::PathSegment::MoveTo { x, y } => {
-                            contour = Contour::new();
+                            if !contour.is_empty() {
+                                outline
+                                    .push_contour(std::mem::replace(&mut contour, Contour::new()));
+                            }
                             contour.push_endpoint(Vector2F::new(*x as f32, *y as f32));
                         }
                         usvg::PathSegment::LineTo { x, y } => {
@@ -250,6 +253,9 @@ impl RustySvg {
                             outline.push_contour(std::mem::replace(&mut contour, Contour::new()));
                         }
                     }
+                }
+                if !contour.is_empty() {
+                    outline.push_contour(std::mem::replace(&mut contour, Contour::new()));
                 }
                 if let Some(stroke) = p.stroke.as_ref() {
                     let mut style = StrokeStyle::default();
