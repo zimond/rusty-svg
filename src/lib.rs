@@ -8,6 +8,7 @@ use pathfinder_content::{
 use pathfinder_geometry::vector::Vector2F;
 use std::rc::Rc;
 use tiny_skia::Pixmap;
+use usvg::{PathData, Transform};
 use wasm_bindgen::prelude::*;
 
 const MAX: f64 = std::f64::MAX;
@@ -43,7 +44,9 @@ impl RustySvg {
     #[wasm_bindgen(constructor)]
     pub fn new(svg: &str) -> RustySvg {
         let tree = usvg::Tree::from_str(svg, &usvg::Options::default()).unwrap();
-        RustySvg { tree }
+        let mut svg = RustySvg { tree };
+        svg.apply_transform();
+        svg
     }
 
     #[wasm_bindgen(getter)]
@@ -208,6 +211,44 @@ impl RustySvg {
         }
     }
 
+    // Currently this method only applies transforms added to paths
+    fn apply_transform(&mut self) {
+        for mut node in self.tree.root().descendants() {
+            if let usvg::NodeKind::Path(p) = &mut *node.borrow_mut() {
+                let transform = p.transform;
+                if transform.is_default() {
+                    continue;
+                }
+                let mut data = p.data.0.clone();
+                for seg in &mut data {
+                    match seg {
+                        usvg::PathSegment::MoveTo { x, y } => {
+                            transform.apply_to(x, y);
+                        }
+                        usvg::PathSegment::LineTo { x, y } => {
+                            transform.apply_to(x, y);
+                        }
+                        usvg::PathSegment::CurveTo {
+                            x1,
+                            x2,
+                            y1,
+                            y2,
+                            x,
+                            y,
+                        } => {
+                            transform.apply_to(x, y);
+                            transform.apply_to(x1, y1);
+                            transform.apply_to(x2, y2);
+                        }
+                        _ => {}
+                    }
+                }
+                p.data = Rc::new(PathData(data));
+                p.transform = Transform::default();
+            }
+        }
+    }
+
     fn node_bbox(&self, node: usvg::Node) -> (usvg::Point<f64>, usvg::Point<f64>) {
         let transform = node.borrow().transform();
         let (bbox_min, bbox_max) = match &*node.borrow() {
@@ -364,7 +405,7 @@ mod test {
         let mut svg = String::new();
         file.read_to_string(&mut svg).unwrap();
         let svg = RustySvg::new(&svg);
-        assert_eq!(svg.inner_bbox().width.round() as u32, 121);
+        assert_eq!(svg.inner_bbox().width.round() as u32, 116);
         // TODO: test inner_bbox().height
         // assert_eq!(svg.inner_bbox().height, 87.28472137451172);
     }
