@@ -300,7 +300,16 @@ impl RustySvg {
         };
         let (x1, y1) = transform.apply(bbox_min.x, bbox_min.y);
         let (x2, y2) = transform.apply(bbox_max.x, bbox_max.y);
-        (usvg::Point::new(x1, y1), usvg::Point::new(x2, y2))
+        let (x3, y3) = transform.apply(bbox_min.x, bbox_max.y);
+        let (x4, y4) = transform.apply(bbox_max.x, bbox_min.y);
+        let x_min = x1.min(x2).min(x3).min(x4);
+        let x_max = x1.max(x2).max(x3).max(x4);
+        let y_min = y1.min(y2).min(y3).min(y4);
+        let y_max = y1.max(y2).max(y3).max(y4);
+        (
+            usvg::Point::new(x_min, y_min),
+            usvg::Point::new(x_max, y_max),
+        )
     }
 
     fn node_by_id(&self, id: &str) -> Option<usvg::Node> {
