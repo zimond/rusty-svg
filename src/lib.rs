@@ -181,6 +181,11 @@ impl RustySvg {
             min_max_point(&mut min_point, &mut max_point, min.x, min.y);
             min_max_point(&mut min_point, &mut max_point, max.x, max.y);
         }
+        let rect = self.tree.svg_node().view_box.rect;
+        min_point.x = min_point.x.max(rect.x());
+        min_point.y = min_point.y.max(rect.y());
+        max_point.x = max_point.x.min(rect.x() + rect.width());
+        max_point.y = max_point.y.min(rect.y() + rect.height());
         BBox {
             x: min_point.x.floor(),
             y: min_point.y.floor(),
