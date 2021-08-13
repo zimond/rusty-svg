@@ -137,7 +137,7 @@ impl RustySvg {
 
     /// Output the svg to a string
     pub fn to_string(&self) -> String {
-        let s = self.tree.to_string(usvg::XmlOptions::default());
+        let s = self.tree.to_string(&usvg::XmlOptions::default());
         let path_reg = regex::RegexBuilder::new(
             r#"\s(C\s[\d\.]+\s[\d\.]+\s[\d\.]+\s[\d\.]+\s[\d\.]+\s[\d\.]+)"#,
         )
