@@ -48,6 +48,13 @@ Crop the svg with a given bbox. Combined with `.inner_bbox()` API, you could rem
 
 NOTE: this API currently do not actually change the content of the SVG. It uses viewbox to hacky display a certain rect of the file only.
 
+### `rustySvg.render({ width?: number, background?: string })`
+
+Render the svg file to a PNG buffer.
+
+- **width** config attribute controls the actual width of the PNG file
+- **background** currently supports reading a solid hex color value as the background of the output PNG file
+
 ### `getter width(): number`
 
 Width of the file

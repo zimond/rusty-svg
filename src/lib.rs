@@ -12,6 +12,7 @@ use usvg::{PathData, Transform};
 use wasm_bindgen::prelude::*;
 
 const MAX: f64 = std::f64::MAX;
+
 #[wasm_bindgen]
 #[derive(Debug)]
 pub struct BBox {
@@ -19,6 +20,24 @@ pub struct BBox {
     pub y: f64,
     pub width: f64,
     pub height: f64,
+}
+
+#[wasm_bindgen(typescript_custom_section)]
+const ICONFIG: &str = r#"
+interface IConfig {
+    width?: number;
+    background?: string;
+}
+"#;
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(typescript_type = "IConfig")]
+    pub type IConfig;
+    #[wasm_bindgen(getter, method)]
+    pub fn width(this: &IConfig) -> Option<f64>;
+    #[wasm_bindgen(getter, method)]
+    pub fn background(this: &IConfig) -> Option<String>;
 }
 
 #[wasm_bindgen]
@@ -63,10 +82,25 @@ impl RustySvg {
     /// the image to be scaled proportionally based on the given width.
     ///
     /// Note: floated width will be floored to integer value
-    pub fn render(&self, width: Option<f64>) -> Option<Uint8Array> {
-        let width = width.unwrap_or(self.width());
+    pub fn render(&self, config: Option<IConfig>) -> Option<Uint8Array> {
+        let width = config
+            .as_ref()
+            .and_then(|conf| conf.width())
+            .unwrap_or(self.width());
         let height = width / self.width() * self.height();
+        let background = config
+            .as_ref()
+            .and_then(|conf| conf.background())
+            .and_then(|color| color.parse::<usvg::Color>().ok());
         let mut pixmap = Pixmap::new(width as u32, height as u32)?;
+        if let Some(color) = background {
+            pixmap.fill(tiny_skia::Color::from_rgba8(
+                color.red,
+                color.green,
+                color.blue,
+                255,
+            ));
+        }
         resvg::render(
             &self.tree,
             usvg::FitTo::Width(width as u32),
