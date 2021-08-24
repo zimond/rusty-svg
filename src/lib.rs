@@ -62,7 +62,8 @@ pub struct RustySvg {
 impl RustySvg {
     #[wasm_bindgen(constructor)]
     pub fn new(svg: &str) -> RustySvg {
-        let tree = usvg::Tree::from_str(svg, &usvg::Options::default()).unwrap();
+        let opt = usvg::Options::default();
+        let tree = usvg::Tree::from_str(svg, &opt.to_ref()).unwrap();
         let mut svg = RustySvg { tree };
         svg.apply_transform();
         svg
