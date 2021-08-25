@@ -8,8 +8,16 @@ use pathfinder_content::{
 use pathfinder_geometry::vector::Vector2F;
 use std::rc::Rc;
 use tiny_skia::Pixmap;
-use usvg::{PathData, Transform};
+use usvg::{PathData, Transform, NodeExt};
 use wasm_bindgen::prelude::*;
+extern crate web_sys;
+
+// A macro to provide `println!(..)`-style syntax for `console.log` logging.
+macro_rules! log {
+    ( $( $t:tt )* ) => {
+        web_sys::console::log_1(&format!( $( $t )* ).into());
+    }
+}
 
 const MAX: f64 = std::f64::MAX;
 
@@ -232,6 +240,27 @@ impl RustySvg {
         }
     }
 
+    /// Calculate SVG bbox, like SVGGraphicsElement.getBBox() DOM API.
+    pub fn get_bbox(&self) -> BBox {
+        let node = self.tree.root();
+        if let Some(bbox) = node.calculate_bbox() {
+            return BBox {
+                x: bbox.x(),
+                y: bbox.y(),
+                width: bbox.width(),
+                height: bbox.height(),
+            }
+        } else {
+            log!("SVG {:?} has zero size.", node.id());
+            return BBox {
+                x: 0.0,
+                y: 0.0,
+                width: 0.0,
+                height: 0.0,
+            }
+        }
+    }
+
     /// Use a given `BBox` to crop the svg. Currently this method simply
     /// changes the viewbox/size of the svg and do not move the elements
     /// for simplicity
@@ -435,7 +464,7 @@ mod test {
     use std::fs::File;
     use std::io::Read;
     #[test]
-    fn test_inner_box() {
+    fn test_inner_bbox() {
         let mut file = File::open("tests/heart.svg").unwrap();
         let mut svg = String::new();
         file.read_to_string(&mut svg).unwrap();
@@ -443,5 +472,14 @@ mod test {
         assert_eq!(svg.inner_bbox().width.round() as u32, 116);
         // TODO: test inner_bbox().height
         // assert_eq!(svg.inner_bbox().height, 87.28472137451172);
+    }
+    #[test]
+    fn test_get_bbox() {
+        let mut file = File::open("tests/heart.svg").unwrap();
+        let mut svg = String::new();
+        file.read_to_string(&mut svg).unwrap();
+        let svg = RustySvg::new(&svg);
+        assert_eq!(svg.get_bbox().width as f64, 119.30921936035156);
+        assert_eq!(svg.get_bbox().height as f64, 87.28472137451172);
     }
 }
