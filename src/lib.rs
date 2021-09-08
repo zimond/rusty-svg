@@ -3,7 +3,7 @@ use lyon_algorithms::geom::Point;
 use pathfinder_content::stroke::{OutlineStrokeToFill, StrokeStyle};
 use pathfinder_content::{
     outline::{Contour, Outline},
-    stroke::LineJoin,
+    stroke::*,
 };
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::Vector2F;
@@ -291,6 +291,19 @@ impl RustySvg {
         let transform = node.borrow().transform();
         let bbox = match &*node.borrow() {
             usvg::NodeKind::Path(p) => {
+                let no_fill = p.fill.is_none()
+                    || p.fill
+                        .as_ref()
+                        .map(|f| f.opacity.value() == 0.0)
+                        .unwrap_or_default();
+                let no_stroke = p.stroke.is_none()
+                    || p.stroke
+                        .as_ref()
+                        .map(|f| f.opacity.value() == 0.0)
+                        .unwrap_or_default();
+                if no_fill && no_stroke {
+                    return None;
+                }
                 let mut outline = Outline::new();
                 let mut contour = Contour::new();
                 let mut iter = p.data.0.iter().peekable();
@@ -337,12 +350,19 @@ impl RustySvg {
                     outline.push_contour(std::mem::replace(&mut contour, Contour::new()));
                 }
                 if let Some(stroke) = p.stroke.as_ref() {
-                    let mut style = StrokeStyle::default();
-                    style.line_width = stroke.width.value() as f32;
-                    style.line_join = LineJoin::Miter(style.line_width);
-                    let mut filler = OutlineStrokeToFill::new(&outline, style);
-                    filler.offset();
-                    outline = filler.into_outline();
+                    if !no_stroke {
+                        let mut style = StrokeStyle::default();
+                        style.line_width = stroke.width.value() as f32;
+                        style.line_join = LineJoin::Miter(style.line_width);
+                        style.line_cap = match stroke.linecap {
+                            usvg::LineCap::Butt => LineCap::Butt,
+                            usvg::LineCap::Round => LineCap::Round,
+                            usvg::LineCap::Square => LineCap::Square,
+                        };
+                        let mut filler = OutlineStrokeToFill::new(&outline, style);
+                        filler.offset();
+                        outline = filler.into_outline();
+                    }
                 }
                 Some(outline.bounds())
             }
