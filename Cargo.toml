@@ -25,7 +25,7 @@ wasm-opt = ["-O3"] # Optimize aggressively for speed.
 
 # Default profiles: https://doc.rust-lang.org/cargo/reference/profiles.html#default-profiles
 [profile.release]
-lto = true # Enable Link Time Optimization
+lto = true    # Enable Link Time Optimization
 opt-level = 3
 # Setting this to 1 may improve the performance of generated code, but may be slower to compile.
 # https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
