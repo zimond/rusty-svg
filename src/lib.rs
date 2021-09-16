@@ -455,13 +455,22 @@ mod test {
     use std::fs::File;
     use std::io::Read;
     #[test]
-    fn test_inner_box() {
+    fn test_inner_bbox() {
         let mut file = File::open("tests/heart.svg").unwrap();
         let mut svg = String::new();
         file.read_to_string(&mut svg).unwrap();
         let svg = RustySvg::new(&svg).unwrap();
         assert_eq!(svg.inner_bbox().width.round() as u32, 116);
-        // TODO: test inner_bbox().height
-        // assert_eq!(svg.inner_bbox().height, 87.28472137451172);
+        assert_eq!(svg.inner_bbox().height.round() as u32, 82);
+    }
+
+    #[test]
+    fn test_stroke_clip_path_inner_bbox() {
+        let mut file = File::open("tests/stroke-clip-path.svg").unwrap();
+        let mut svg = String::new();
+        file.read_to_string(&mut svg).unwrap();
+        let svg = RustySvg::new(&svg).unwrap();
+        assert_eq!(svg.inner_bbox().width.round() as u32, 115);
+        assert_eq!(svg.inner_bbox().height.round() as u32, 25);
     }
 }
