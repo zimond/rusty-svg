@@ -242,6 +242,9 @@ impl RustySvg {
     /// changes the viewbox/size of the svg and do not move the elements
     /// for simplicity
     pub fn crop(&mut self, bbox: &BBox) {
+        if !bbox.width.is_finite() || !bbox.height.is_finite() {
+            return;
+        }
         let mut node = self.tree.root();
         let mut node = node.borrow_mut();
         if let usvg::NodeKind::Svg(svg) = &mut *node {
