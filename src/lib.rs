@@ -60,12 +60,13 @@ pub struct RustySvg {
 #[wasm_bindgen]
 impl RustySvg {
     #[wasm_bindgen(constructor)]
-    pub fn new(svg: &str) -> RustySvg {
+    pub fn new(svg: &str) -> Result<RustySvg, JsValue> {
         let opt = usvg::Options::default();
-        let tree = usvg::Tree::from_str(svg, &opt.to_ref()).unwrap();
+        let tree = usvg::Tree::from_str(svg, &opt.to_ref())
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
         let mut svg = RustySvg { tree };
         svg.apply_transform();
-        svg
+        Ok(svg)
     }
 
     #[wasm_bindgen(getter)]
@@ -458,7 +459,7 @@ mod test {
         let mut file = File::open("tests/heart.svg").unwrap();
         let mut svg = String::new();
         file.read_to_string(&mut svg).unwrap();
-        let svg = RustySvg::new(&svg);
+        let svg = RustySvg::new(&svg).unwrap();
         assert_eq!(svg.inner_bbox().width.round() as u32, 116);
         // TODO: test inner_bbox().height
         // assert_eq!(svg.inner_bbox().height, 87.28472137451172);
