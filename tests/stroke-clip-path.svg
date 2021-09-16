@@ -1,0 +1,16 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 500 500">
+    <g>
+        <path fill="lightblue" d="M464.7,369.7v23.9H365c-7.5,0-13.6-5.7-14.2-13c0.3-2.9,1.5-5.4,3.4-7.3c2.2-2.2,5.1-3.5,8.5-3.5H464.7 z" />
+        <g>
+            <defs>
+                <path id="SVGID_7_" d="M362.6,365.1h102.1v28.5h-99c-8.3,0-14.9-6.7-14.9-14.9V377C350.8,370.4,356.1,365.1,362.6,365.1z" />
+            </defs>
+            <clipPath id="SVGID_8_">
+                <use xlink:href="#SVGID_7_" overflow="visible" />
+            </clipPath>
+            <g clip-path="url(#SVGID_8_)">
+                <line stroke-width="10" stroke="red" x1="330" y1="380" x2="500" y2="380" />
+            </g>
+        </g>
+    </g>
+</svg>
