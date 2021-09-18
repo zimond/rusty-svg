@@ -13,7 +13,7 @@ lyon_algorithms = "0.17.4"
 pathfinder_content = "0.5.0"
 pathfinder_geometry = "0.5.1"
 regex = "1.5.4"
-resvg = { version = "0.18.0", default-features = false }
+resvg = { version = "0.18.0", default-features = false, features = ["filter"] }
 tiny-skia = "0.6.0"
 usvg = { version = "0.18.0", default-features = false, features = ["export", "filter"] }
 svgtypes = "0.8.0"
