@@ -64,8 +64,7 @@ impl RustySvg {
         let opt = usvg::Options::default();
         let tree = usvg::Tree::from_str(svg, &opt.to_ref())
             .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
-        let mut svg = RustySvg { tree };
-        svg.apply_transform();
+        let svg = RustySvg { tree };
         Ok(svg)
     }
 
@@ -254,7 +253,7 @@ impl RustySvg {
     }
 
     // Currently this method only applies transforms added to paths
-    fn apply_transform(&mut self) {
+    pub fn apply_transform(&mut self) {
         for mut node in self.tree.root().descendants() {
             if let usvg::NodeKind::Path(p) = &mut *node.borrow_mut() {
                 let transform = p.transform;
@@ -462,7 +461,8 @@ mod test {
         let mut file = File::open("tests/heart.svg").unwrap();
         let mut svg = String::new();
         file.read_to_string(&mut svg).unwrap();
-        let svg = RustySvg::new(&svg).unwrap();
+        let mut svg = RustySvg::new(&svg).unwrap();
+        svg.apply_transform();
         assert_eq!(svg.inner_bbox().width.round() as u32, 116);
         assert_eq!(svg.inner_bbox().height.round() as u32, 82);
     }
@@ -472,7 +472,8 @@ mod test {
         let mut file = File::open("tests/stroke-clip-path.svg").unwrap();
         let mut svg = String::new();
         file.read_to_string(&mut svg).unwrap();
-        let svg = RustySvg::new(&svg).unwrap();
+        let mut svg = RustySvg::new(&svg).unwrap();
+        svg.apply_transform();
         assert_eq!(svg.inner_bbox().width.round() as u32, 115);
         assert_eq!(svg.inner_bbox().height.round() as u32, 25);
     }
